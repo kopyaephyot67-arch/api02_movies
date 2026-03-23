@@ -109,16 +109,11 @@ router.put('/:id', async (req, res) => {
 });
 
 // ── 5. PATCH /movies/:id/rating ──────────────────────────────
-// Updates ONLY the rating field of a movie.
-// This satisfies the assignment: "at least one endpoint that updates data"
-// Flutter sends the new rating from a star-rating widget.
+// Auto-increments rating by +0.1 per call, capped at 10.0
+// No request body needed — Flutter just calls PATCH and rating goes up
 // PATCH = partial update (only one field), not the whole record.
 router.patch('/:id/rating', async (req, res) => {
-  const { rating } = req.body;
   try {
-    if (rating === undefined || rating < 0 || rating > 5) {
-      return res.status(400).json({ error: 'Rating must be between 0 and 5' });
-    }
     const [check] = await pool.query(
       'SELECT id FROM movies WHERE id = ?',
       [req.params.id]
@@ -127,8 +122,8 @@ router.patch('/:id/rating', async (req, res) => {
       return res.status(404).json({ error: 'Movie not found' });
     }
     await pool.query(
-      'UPDATE movies SET rating = ? WHERE id = ?',
-      [rating, req.params.id]
+      'UPDATE movies SET rating = LEAST(rating + 0.1, 10.0) WHERE id = ?',
+      [req.params.id]
     );
     const [rows] = await pool.query(
       'SELECT * FROM movies WHERE id = ?',
